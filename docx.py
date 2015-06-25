@@ -305,14 +305,20 @@ def cell_style(row, col):
                     'align': specify the alignment, see paragraph
                                     documentation.
     """
-    return {'style': {'val': 'clear',
-                      'color': 'auto',
-                      'fill': '123456',
-                      'themeFill': 'text2',
-                      'themeFillTint': '99'},
-            'align': 'left'}
+    default_style = {'style': {'val': 'clear',
+                               'color': 'auto',
+                               'fill': 'FFFFFF',
+                               'themeFill': 'text2',
+                               'themeFillTint': '99'},
+                     'align': 'left'}
 
-def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
+    # default center alignment for header
+    if not row:
+        default_style['align'] = 'center'
+
+    return default_style
+
+def table(contents, colw=None, cwunit='dxa', tblw=0,
           twunit='auto', borders=None, style_func=cell_style):
     """
     Return a table element based on specified parameters
@@ -321,8 +327,6 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
                           the list can be a string or a valid XML element
                           itself. It can also be a list. In that case all the
                           listed elements will be merged into the cell.
-    @param bool heading:  Tells whether first line should be treated as
-                          heading or not
     @param list colw:     list of integer column widths specified in wunitS.
     @param str  cwunit:   Unit used for column width:
                             'pct'  : fiftieths of a percent
@@ -383,47 +387,20 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
     cnfStyle = makeelement('cnfStyle', attributes={'val': '000000100000'})
     rowprops.append(cnfStyle)
     row.append(rowprops)
-    if heading:
-        i = 0
-        for heading in contents[0]:
-            cell = makeelement('tc')
-            # Cell properties
-            cellprops = makeelement('tcPr')
-            if colw:
-                wattr = {'w': str(colw[i]), 'type': cwunit}
-            else:
-                wattr = {'w': '0', 'type': 'auto'}
-            cellwidth = makeelement('tcW', attributes=wattr)
-            cellstyle = makeelement('shd', attributes=style_func(0, i)['style'])
-            cellprops.append(cellwidth)
-            cellprops.append(cellstyle)
-            cell.append(cellprops)
-            # Paragraph (Content)
-            if not isinstance(heading, (list, tuple)):
-                heading = [heading]
-            for h in heading:
-                if isinstance(h, etree._Element):
-                    cell.append(h)
-                else:
-                    cell.append(paragraph(h, jc='center'))
-            row.append(cell)
-            i += 1
-        table.append(row)
     # Contents Rows
-    for contentrow in contents[1 if heading else 0:]:
+    for i, contentrow in enumerate(contents):
         row = makeelement('tr')
-        i = 0
+
         for k, content in enumerate(contentrow):
             cell = makeelement('tc')
             # Properties
             cellprops = makeelement('tcPr')
             if colw:
-                wattr = {'w': str(colw[i]), 'type': cwunit}
+                wattr = {'w': str(colw[k]), 'type': cwunit}
             else:
                 wattr = {'w': '0', 'type': 'auto'}
             cellwidth = makeelement('tcW', attributes=wattr)
-            cellstyle = makeelement('shd',
-                                   attributes=style_func(i+heading, k)['style'])
+            cellstyle = makeelement('shd', attributes=style_func(i, k)['style'])
             cellprops.append(cellwidth)
             cellprops.append(cellstyle)
             cell.append(cellprops)
@@ -434,10 +411,9 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
                 if isinstance(c, etree._Element):
                     cell.append(c)
                 else:
-                    cell.append(paragraph(c,
-                                          jc=style_func(i+heading, k)['align']))
+                    cell.append(paragraph(c, jc=style_func(i, k)['align']))
             row.append(cell)
-            i += 1
+
         table.append(row)
     return table
 
