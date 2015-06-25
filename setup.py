@@ -18,7 +18,7 @@ DESCRIPTION = (
 
 setup(
     name='docx',
-    version='0.2.4',
+    version='0.2.5',
     install_requires=['lxml', 'Pillow>=2.0'],
     description=DESCRIPTION,
     author='Mike MacCana',

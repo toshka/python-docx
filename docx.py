@@ -293,9 +293,27 @@ def heading(headingtext, headinglevel, lang='en'):
     # Return the combined paragraph
     return paragraph
 
+def cell_style(row, col):
+    """
+    Default function for table cell styles.
+
+    @param int row: Cell's row number
+    @param int col: Cell's column number
+
+    @return dict: dict with 2 supported keys:
+                    'style': dict of styles
+                    'align': specify the alignment, see paragraph
+                                    documentation.
+    """
+    return {'style': {'val': 'clear',
+                      'color': 'auto',
+                      'fill': '123456',
+                      'themeFill': 'text2',
+                      'themeFillTint': '99'},
+            'align': 'left'}
 
 def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
-          twunit='auto', borders={}, celstyle=None):
+          twunit='auto', borders=None, style_func=cell_style):
     """
     Return a table element based on specified parameters
 
@@ -327,10 +345,7 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
                                     a point
                             val   : The style of the border, see
                 http://www.schemacentral.com/sc/ooxml/t-w_ST_Border.htm
-    @param list celstyle: Specify the style for each colum, list of dicts.
-                          supported keys:
-                          'align' : specify the alignment, see paragraph
-                                    documentation.
+
     @return lxml.etree:   Generated XML etree element
     """
     table = makeelement('tbl')
@@ -342,13 +357,13 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
     tablewidth = makeelement(
         'tblW', attributes={'w': str(tblw), 'type': str(twunit)})
     tableprops.append(tablewidth)
-    if len(borders.keys()):
+    if borders:
         tableborders = makeelement('tblBorders')
         for b in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
-            if b in borders.keys() or 'all' in borders.keys():
-                k = 'all' if 'all' in borders.keys() else b
+            if b in borders or 'all' in borders:
+                k = 'all' if 'all' in borders else b
                 attrs = {}
-                for a in borders[k].keys():
+                for a in borders[k]:
                     attrs[a] = unicode(borders[k][a])
                 borderelem = makeelement(b, attributes=attrs)
                 tableborders.append(borderelem)
@@ -379,11 +394,7 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
             else:
                 wattr = {'w': '0', 'type': 'auto'}
             cellwidth = makeelement('tcW', attributes=wattr)
-            cellstyle = makeelement('shd', attributes={'val': 'clear',
-                                                       'color': 'auto',
-                                                       'fill': 'FFFFFF',
-                                                       'themeFill': 'text2',
-                                                       'themeFillTint': '99'})
+            cellstyle = makeelement('shd', attributes=style_func(0, i)['style'])
             cellprops.append(cellwidth)
             cellprops.append(cellstyle)
             cell.append(cellprops)
@@ -402,7 +413,7 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
     for contentrow in contents[1 if heading else 0:]:
         row = makeelement('tr')
         i = 0
-        for content in contentrow:
+        for k, content in enumerate(contentrow):
             cell = makeelement('tc')
             # Properties
             cellprops = makeelement('tcPr')
@@ -411,7 +422,10 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
             else:
                 wattr = {'w': '0', 'type': 'auto'}
             cellwidth = makeelement('tcW', attributes=wattr)
+            cellstyle = makeelement('shd',
+                                   attributes=style_func(i+heading, k)['style'])
             cellprops.append(cellwidth)
+            cellprops.append(cellstyle)
             cell.append(cellprops)
             # Paragraph (Content)
             if not isinstance(content, (list, tuple)):
@@ -420,11 +434,8 @@ def table(contents, heading=True, colw=None, cwunit='dxa', tblw=0,
                 if isinstance(c, etree._Element):
                     cell.append(c)
                 else:
-                    if celstyle and 'align' in celstyle[i].keys():
-                        align = celstyle[i]['align']
-                    else:
-                        align = 'left'
-                    cell.append(paragraph(c, jc=align))
+                    cell.append(paragraph(c,
+                                          jc=style_func(i+heading, k)['align']))
             row.append(cell)
             i += 1
         table.append(row)
